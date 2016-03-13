@@ -20,6 +20,7 @@
 #define DEFAULT_WINDOW_WIDTH 1280
 #define DEFAULT_WINDOW_HEIGHT 720
 
+#include <thread>
 class Visualisation
 {
 public:
@@ -30,6 +31,7 @@ public:
     void handleKeypress(SDL_Keycode keycode, int x, int y);
     void close();
     void run(); // @todo - improve
+    void runAsync();
 
     char* getWindowTitle();
     void setWindowTitle(char* windowTitle);
@@ -52,6 +54,7 @@ public:
     VisualisationScene *getScene() const;
 
 private:
+    std::thread *t;
     SDL_Window* window;
     SDL_GLContext context;
     Camera camera;

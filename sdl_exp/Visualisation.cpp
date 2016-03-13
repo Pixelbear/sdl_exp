@@ -107,6 +107,7 @@ bool Visualisation::init(){
 
         // Setup the projection matrix
         this->resizeWindow();
+
     }
     return result;
 }
@@ -151,8 +152,13 @@ void Visualisation::close(){
     this->window = NULL;
     SDL_Quit();
 }
-
+void Visualisation::runAsync()
+{
+    SDL_GL_MakeCurrent(this->window, NULL);
+    this->t = new std::thread(&Visualisation::run, this);
+}
 void Visualisation::run(){
+    SDL_GL_MakeCurrent(this->window, this->context);
     if (!this->isInitialised){
         printf("Visulisation not initialised yet.");
     }
@@ -160,9 +166,10 @@ void Visualisation::run(){
         SDL_Event e;
         SDL_StartTextInput();
         while (!this->quit){
+            printf("0");
             // Update the fps
             this->updateFPS();
-
+            printf("1");
             // Handle continues press keys (movement)
             const Uint8 *state = SDL_GetKeyboardState(NULL);
             float turboMultiplier = state[SDL_SCANCODE_LSHIFT] ? SHIFT_MULTIPLIER : 1.0f;
@@ -192,6 +199,7 @@ void Visualisation::run(){
             }
             
 
+            printf("2");
             // handle each event on the queue
             while (SDL_PollEvent(&e) != 0){
                 switch (e.type){
@@ -220,11 +228,14 @@ void Visualisation::run(){
                 }
             }
 
+            printf("3");
             // update
             this->scene->update();
             // render
+            printf("4");
             this->clearFrame();
             this->skybox->render(&camera, this->frustum);
+            printf("5");
             this->defaultProjection();
             if (this->renderAxisState)
                 this->axis.render();
@@ -239,10 +250,14 @@ void Visualisation::run(){
                 printf("OpenGL Error Occured: %i\n", err);// : %s\n", message);
             }
             // update the screen
+            printf("6");
             SDL_GL_SwapWindow(window);
+            printf("7");
         }
+        printf("7.5");
         SDL_StopTextInput();
 
+        printf("8");
     }
 
     this->close();
@@ -389,19 +404,23 @@ bool Visualisation::isFullscreen(){
 
 // Super simple fps counter imoplementation
 void Visualisation::updateFPS(){
+    printf("8");
     // Update the current time
     this->currentTime = SDL_GetTicks();
     // Update frame counter
     this->frameCount += 1;
     // If it's been more than a second, do something.
+    printf("9");
     if (this->currentTime > this->previousTime + ONE_SECOND_MS){
         // Calculate average fps.
         double fps = this->frameCount / double(this->currentTime - this->previousTime) * ONE_SECOND_MS;
         // Update the title to include FPS at the end.
         std::ostringstream newTitle;
         newTitle << this->windowTitle << " (" << std::to_string(static_cast<int>(std::ceil(fps))) << " fps)";
-        SDL_SetWindowTitle(this->window, newTitle.str().c_str());
+        printf("-");
+        //SDL_SetWindowTitle(this->window, newTitle.str().c_str());
 
+        printf("-");
         // reset values;
         this->previousTime = this->currentTime;
         this->frameCount = 0;
