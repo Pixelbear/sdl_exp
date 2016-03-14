@@ -1,16 +1,14 @@
 #define  _CRT_SECURE_NO_WARNINGS
 #include "Entity.h"
 
-#include <iostream>
 #include <fstream>
-#include <string>
 
 /*
 Constructs an entity from the provided .obj model
 @param modelPath Path to .obj format model file
 @param modelScale World size to scale the longest direction (in the x, y or z) axis of the model to fit
 */
-Entity::Entity(const char *modelPath, float modelScale)
+Entity::Entity(const char *modelPath, float modelScale, Shaders *shaders)
     : vertices(0)
     , normals(0)
     , faces(0)
@@ -18,13 +16,21 @@ Entity::Entity(const char *modelPath, float modelScale)
     , faces_vbo(0)
     , SCALE(modelScale)
     , material(0)
-    , color(255,0,0)
-    , location(0.0f,0.0f,0.0f)
+    , color(1,0,0)
+    , location(0.0f)
+    , rotation(0.0f)
+    , shaders(shaders)
 {
     loadModelFromFile(modelPath, modelScale);
     createVertexBufferObject(&vertices_vbo, GL_ARRAY_BUFFER, v_count*sizeof(glm::vec3)*2);//vertices+norms
     createVertexBufferObject(&faces_vbo, GL_ELEMENT_ARRAY_BUFFER, f_count*sizeof(glm::ivec3));
     fillBuffers();
+    //If shaders have been provided, set them up
+    if (this->shaders)
+    {
+        this->shaders->setVertexAttributeDetail(vertices_vbo, 0, 3, 0);
+        this->shaders->setVertexNormalAttributeDetail(vertices_vbo, v_count*sizeof(glm::vec3), 3, 0);
+    }
 }
 /*
 Destructor, free's memory allocated to store the model and its material
@@ -38,33 +44,26 @@ Calls the necessary code to render a single instance of the entity
 @param vertLocation The shader attribute location to pass vertices
 @param normalLocation The shader attribute location to pass normals
 */
-void Entity::render(GLuint vertLocation, GLuint normalLocation){
-    //Set vertex buffer, and init pointers to vertices, normals
-    GL_CALL(glBindBuffer(GL_ARRAY_BUFFER, vertices_vbo));
-    //Pass vertices
-    glEnableVertexAttribArray(0);
-    GL_CALL(glVertexAttribPointer(vertLocation, 3, GL_FLOAT, GL_FALSE, 0, 0));
-    //Pass normals
-    glEnableVertexAttribArray(1);
-    GL_CALL(glVertexAttribPointer(normalLocation, 3, GL_FLOAT, GL_FALSE, 0, ((char *)NULL + (v_count*sizeof(glm::vec3)))));
+void Entity::render(){
+    if (shaders)
+        shaders->useProgram();
     //Bind the faces to be rendered
     GL_CALL(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, faces_vbo));
 
     glPushMatrix();
         //Translate the model according to it's location
-    GL_CALL(glTranslatef(location.x, location.y, location.z));
+        glMatrixMode(GL_MODELVIEW);
+        GL_CALL(glRotatef(rotation.w, rotation.x, rotation.y, rotation.z));
+        GL_CALL(glTranslatef(location.x, location.y, location.z));
         //Set the color or material
         if (this->material){
             this->material->useMaterial();
         }
-        else {
-            GL_CALL(glColor4f(color.x, color.y, color.z, 1.0));
-        }
+        GL_CALL(glColor4f(color.x, color.y, color.z, 1.0));
         GL_CALL(glDrawElements(GL_TRIANGLES, f_count * 3, GL_UNSIGNED_INT, 0));
     glPopMatrix();
-
-    glDisableVertexAttribArray(1);
-    glDisableVertexAttribArray(0);
+    if (shaders)
+        shaders->clearProgram();
 }
 /*
 Calls the necessary code to render count instances of the entity
@@ -394,6 +393,13 @@ Set the location of the model in world space
 */
 void Entity::setLocation(glm::vec3 location){
     this->location = location;
+}
+/*
+Set the rotation of the model in world space
+@param rotation glm::vec4(axis.x, axis.y, axis.z, degrees)
+*/
+void Entity::setRotation(glm::vec4 rotation){
+    this->rotation = rotation;
 }
 /*
 Allocates the storage for the model's primitives (vertices, normals and faces) according to the instance variables v_count and f_count

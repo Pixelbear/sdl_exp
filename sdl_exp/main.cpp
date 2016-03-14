@@ -1,10 +1,10 @@
-#include "Visualisation.h"
-#include <stdio.h>
+#include "EntityScene.h"
 
 int main()
 {
     Visualisation v = Visualisation("Visulisation Example", 1280, 720);
-    v.setRenderAxis(true);
+    EntityScene *scene = new EntityScene(v);
+    
     v.runAsync();
 
     while (true)

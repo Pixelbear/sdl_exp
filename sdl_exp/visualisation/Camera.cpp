@@ -1,6 +1,6 @@
 #include "Camera.h"
 
-#include <stdio.h>
+#include <glm/gtx/rotate_vector.hpp>
 
 /*
 Initialises the camera located at (1,1,1) directed at (0,0,0)
@@ -40,6 +40,7 @@ Camera::Camera(glm::vec3 eye, glm::vec3 target)
         up = -up;
         right = -right;
     }
+    this->updateViews();
 }
 /*
 Default destructor
@@ -59,10 +60,11 @@ void Camera::turn(float yaw, float pitch){
     //Rotate everything pitch rads about right vector
     glm::vec3 look = normalize(rotate(this->look, -pitch, this->right));
     glm::vec3 up = normalize(rotate(this->up, -pitch, this->right));
+    glm::vec3 right = this->right;
     if (stabilise)
     {    
         //Right is perpendicular to look and (0,1,0)[Default up]
-        glm::vec3 right = cross(this->pureUp, look);
+        right = cross(this->pureUp, look);
         //Stabilised up is perpendicular to right and look
         up = cross(right, look);
         //Flip up and right if backwards
@@ -77,8 +79,9 @@ void Camera::turn(float yaw, float pitch){
     }
     //Commit changes
     this->look = look;
-    this->right = right;//<-BUG? Copying instance var of right back into itself, rather than the local one declared out of scope above
+    this->right = right;
     this->up = up;
+    this->updateViews();
 }
 /*
 Move eye specified distance along look
@@ -86,6 +89,7 @@ Move eye specified distance along look
 */
 void Camera::move(float distance){
     eye += look*distance;
+    this->updateViews();
 }
 /*
 Rotate right and up, roll radians about look
@@ -95,6 +99,7 @@ void Camera::roll(float roll){
     pureUp = normalize(rotate(pureUp, roll, look));
     right = normalize(rotate(right, roll, look));
     up = normalize(rotate(up, roll, look));
+    this->updateViews();
 }
 /*
 Move eye specified distance along right
@@ -102,6 +107,7 @@ Move eye specified distance along right
 */
 void Camera::strafe(float distance){
     eye += right*distance;
+    this->updateViews();
 }
 /*
 Move eye specified distance along up
@@ -109,14 +115,23 @@ Move eye specified distance along up
 */
 void Camera::ascend(float distance){
     eye += up*distance;
+    this->updateViews();
+}
+/*
+Updates the view and skyboxView matrices
+Called whenever any internal camera variables are updated
+*/
+void Camera::updateViews(){
+    viewMat = glm::lookAt(eye, eye + look, up);
+    skyboxViewMat = glm::lookAt(glm::vec3(0), look, up);
 }
 /*
 Returns the projection matrix 
-For use with shader uniforms or glLoadMatrixf() after calling glMatrixMode(GL_PROJECTION)
-@return the projection matrix as calculated by glm::lookAt(glm::vec3, glm::vec3, glm::vec3)
+For use with shader uniforms or glLoadMatrixf() after calling glMatrixMode(GL_MODELVIEW)
+@return the modelview matrix as calculated by glm::lookAt(glm::vec3, glm::vec3, glm::vec3)
 */
-glm::mat4 Camera::view(){
-    return glm::lookAt(eye, eye + look, up);
+glm::mat4 Camera::view() const{
+    return viewMat;
 }
 /*
 Calls gluLookAt()
@@ -132,11 +147,11 @@ void Camera::gluLookAt(){
 }
 /*
 Returns the projection matrix from the perspective required for rendering a skybox (direction only)
-For use with shader uniforms or glLoadMatrixf() after calling glMatrixMode(GL_PROJECTION)
-@return the projection matrix as calculated by glm::lookAt(glm::vec3, glm::vec3, glm::vec3)
+For use with shader uniforms or glLoadMatrixf() after calling glMatrixMode(GL_MODELVIEW)
+@return the modelview matrix as calculated by glm::lookAt(glm::vec3, glm::vec3, glm::vec3)
 */
-glm::mat4 Camera::skyboxView(){
-    return glm::lookAt(glm::vec3(0), look, up);
+glm::mat4 Camera::skyboxView() const{
+    return skyboxViewMat;
 }
 /*
 Calls gluLookAt() from the perspective required for rendering a skybox (direction only) 
@@ -154,28 +169,36 @@ void Camera::skyboxGluLookAt(){
 Returns the cameras location
 @return The location of the camera in world space
 */
-const glm::vec3 Camera::getEye(){
+glm::vec3 Camera::getEye() const{
     return eye;
 }
 /*
 Returns the cameras normalized direction vector
 @return The normalized direction of the camera
 */
-const glm::vec3 Camera::getLook(){
+glm::vec3 Camera::getLook() const{
     return look;
 }
 /*
 Returns the cameras normalized up vector
 @return The normalized direction the camera treats as upwards
 */
-const glm::vec3 Camera::getUp(){
+glm::vec3 Camera::getUp() const{
     return up;
+}
+/*
+Returns the value of pureUp
+This value is used by the stabilisation to prevent the camera rolling unintentionally
+@return The normalized direction the camera treats as the true up
+*/
+glm::vec3 Camera::getPureUp() const{
+    return pureUp;
 }
 /*
 Returns the cameras normalized right vector
 @return The normalized direction the camera treats as rightwards
 */
-const glm::vec3 Camera::getRight(){
+glm::vec3 Camera::getRight() const{
     return right;
 }
 /*
@@ -186,4 +209,20 @@ When the camera is not stabilsed, moving the mouse in a circular motion may caus
 */
 void Camera::setStabilise(bool stabilise){
     this->stabilise = stabilise;
+}
+/*
+Returns a constant pointer to the cameras modelview matrix
+This pointer can be used to continuously track the modelview matrix
+@return A pointer to the modelview matrix
+*/
+const glm::mat4 *Camera::getViewMatPtr() const{
+    return &viewMat;
+}
+/*
+Returns a constant pointer to the cameras skybox modelview matrix
+This pointer can be used to continuously track the skybox modelview matrix
+@return A pointer to the modelview matrix
+*/
+const glm::mat4 *Camera::getSkyboxViewMatPtr() const{
+    return &skyboxViewMat;
 }
