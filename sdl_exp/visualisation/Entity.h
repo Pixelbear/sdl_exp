@@ -11,6 +11,7 @@
 #include "texture/Texture2D.h"
 #include "Camera.h"
 #include "interface/Viewport.h"
+#include "interface/Renderable.h"
 
 namespace Stock
 {
@@ -32,7 +33,7 @@ namespace Stock
 /*
 A renderable model loaded from a .obj file
 */
-class Entity
+class Entity : public Renderable
 {
     friend class Shaders;
 public:
@@ -74,8 +75,6 @@ public:
     std::shared_ptr<Shaders> getShaders() const;
     virtual void setModelViewMatPtr(glm::mat4 const *modelViewMat);
     virtual void setProjectionMatPtr(glm::mat4 const *projectionMat);
-    virtual void setModelViewMatPtr(const Camera *modelViewMat);
-    virtual void setProjectionMatPtr(const Viewport *visualisation);
     void flipVertexOrder();
     void setCullFace(const bool cullFace);
 protected:
